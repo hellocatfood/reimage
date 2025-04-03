@@ -4,7 +4,6 @@ import skimage
 from tqdm import trange
 import cv2
 
-
 parser = ArgumentParser()
 parser.add_argument('from_filename', type=str)
 parser.add_argument('to_filename', type=str)
@@ -18,7 +17,6 @@ parser.add_argument('--result_filename', type=str, default=None)
 parser.add_argument('--no_preview', action='store_true')
 args = parser.parse_args()
 
-
 from_image = skimage.io.imread(args.from_filename)
 to_image = skimage.io.imread(args.to_filename)
 
@@ -26,7 +24,6 @@ if from_image.shape != to_image.shape:
     print('Image shapes must match exactly!')
     print(f'Provided shapes: {from_image.shape}, {to_image.shape}')
     exit()
-
 
 def random_swap(image, blur):
     position = np.array((np.random.randint(1, image.shape[0] - 1), np.random.randint(1, image.shape[1] - 1)))
@@ -45,14 +42,13 @@ def random_swap(image, blur):
     result_cut = result[box_min[0]:box_max[0], box_min[1]:box_max[1]]
     to_cut = to_image[box_min[0]:box_max[0], box_min[1]:box_max[1]]
 
-    image_filtered = skimage.filters.gaussian(image_cut, sigma=blur, truncate=2.0, multichannel=True)
-    result_filtered = skimage.filters.gaussian(result_cut, sigma=blur, truncate=2.0, multichannel=True)
-    to_filtered = skimage.filters.gaussian(to_cut, sigma=blur, truncate=2.0, multichannel=True)
-    old_ssim = skimage.measure.compare_ssim(image_filtered, to_filtered, multichannel=True)
-    new_ssim = skimage.measure.compare_ssim(result_filtered, to_filtered, multichannel=True)
+    image_filtered = skimage.filters.gaussian(image_cut, sigma=blur, truncate=2.0, channel_axis=-1)
+    result_filtered = skimage.filters.gaussian(result_cut, sigma=blur, truncate=2.0, channel_axis=-1)
+    to_filtered = skimage.filters.gaussian(to_cut, sigma=blur, truncate=2.0, channel_axis=-1)
+    old_ssim = skimage.metrics.structural_similarity(image_filtered, to_filtered, channel_axis=-1, data_range=1.0)
+    new_ssim = skimage.metrics.structural_similarity(result_filtered, to_filtered, channel_axis=-1, data_range=1.0)
 
     return result, new_ssim - old_ssim
-
 
 reimage = np.copy(from_image)
 for frame in trange(args.num_frames):
@@ -65,7 +61,6 @@ for frame in trange(args.num_frames):
     for iteration in trange(args.iterations_per_frame):
         iterator = (random_swap(reimage, blur=blur) for i in range(args.choices_per_iteration))
         reimage, ssim_gain = max(iterator, key=lambda x: x[1])
-
 
 cv2.destroyAllWindows()
 if args.result_filename is not None:
